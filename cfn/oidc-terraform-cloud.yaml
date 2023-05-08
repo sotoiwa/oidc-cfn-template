@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  OrganizationName:
+    Type: String
+  ProjectName:
+    Type: String
+  WorkspaceName:
+    Type: String
+  RunPhase:
+    Type: String
+    Default: "*"
+
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: tfc-role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRoleWithWebIdentity
+            Principal:
+              Federated: !Ref OidcProvider
+            Condition:
+              StringEquals:
+                app.terraform.io:aud: aws.workload.identity
+              StringLike:
+                app.terraform.io:sub: !Sub organization:${OrganizationName}:project:${ProjectName}:workspace:${WorkspaceName}:run_phase:${RunPhase}
+
+  OidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://app.terraform.io
+      ThumbprintList:
+        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+      ClientIdList:
+        - aws.workload.identity
+
+Outputs:
+  Role:
+    Value: !GetAtt Role.Arn

@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  OrganizationId:
+    Type: String
+
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: circleci-role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      AssumeRolePolicyDocument: !Sub |
+        {
+          "Version": "2008-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "${OidcProvider}"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "oidc.circleci.com/org/${OrganizationId}:aud": "${OrganizationId}"
+                }
+              }
+            }
+          ]
+        }
+
+  OidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !Sub https://oidc.circleci.com/org/${OrganizationId}
+      ThumbprintList:
+        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+      ClientIdList:
+        - !Sub ${OrganizationId}
+
+Outputs:
+  Role:
+    Value: !GetAtt Role.Arn
